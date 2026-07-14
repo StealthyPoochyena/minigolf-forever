@@ -1,0 +1,8 @@
+{
+  "repo": "OWNER/Minigolf-forever",
+  "maxScore": 7,
+  "players": [
+    { "id": "robbe", "name": "Robbe", "color": "#2f9e6e" },
+    { "id": "saar", "name": "Saar", "color": "#8b5cf6" }
+  ]
+}

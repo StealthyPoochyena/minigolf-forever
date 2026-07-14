@@ -1,10 +1,10 @@
 {
-  "name": "Minigolf-forever",
+  "name": "minigolf-forever",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Robbe & Saar's eternal minigolf rivalry tracker",
+  "private": true,
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "private": true
+    "test": "node --test test/"
+  }
 }
