@@ -1,3 +1,10 @@
 {
-  "courses": []
+  "courses": [
+    {
+      "id": "minigolf-hernieuwenburg",
+      "name": "Minigolf Hernieuwenburg",
+      "location": "Wielsbeke",
+      "holes": 18
+    }
+  ]
 }
