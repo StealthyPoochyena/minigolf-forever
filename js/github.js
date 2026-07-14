@@ -108,6 +108,9 @@ export async function replaceGame({ repo, token, gameId, game, newCourse = null,
       if (index === -1) {
         throw new Error('That game no longer exists — someone may have deleted it. Reload and try again.');
       }
+      if (game.id !== gameId && data.games.some((g) => g.id === game.id)) {
+        throw new Error('Save conflict: someone else just saved. Reload and try again.');
+      }
       const games = [...data.games];
       games[index] = game;
       return { games };

@@ -149,6 +149,16 @@ test('replaceGame can change the game id in place', async () => {
   assert.deepEqual(result.games, [moved, existingB]);
 });
 
+test('replaceGame rejects when the new (regenerated) id collides with another existing game', async () => {
+  const colliding = { ...existingA, id: existingB.id };
+  const gh = fakeGitHub([okRead({ games: [existingA, existingB] }, 's1')]);
+  await assert.rejects(
+    replaceGame({ repo: 'o/r', token: 't', gameId: existingA.id, game: colliding, fetchImpl: gh.fetchImpl }),
+    /Save conflict/,
+  );
+  assert.equal(gh.calls.length, 1, 'expected no PUT when the ids collide');
+});
+
 test('replaceGame rejects when the game vanished', async () => {
   const gh = fakeGitHub([okRead({ games: [existingB] }, 's1')]);
   await assert.rejects(

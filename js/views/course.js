@@ -70,11 +70,11 @@ export function wireCourse(root, state, { onDeleted }) {
       if (!game) return;
       const [p1, p2] = state.config.players;
       const totals = gameTotals(game);
-      if (!confirm(`Delete the game of ${fmtDate(game.date)} (${totals[p1.id]} – ${totals[p2.id]})?`)) return;
       if (!getToken()) {
         alert('Deleting needs the GitHub token — open the Add page once to set it.');
         return;
       }
+      if (!confirm(`Delete the game of ${fmtDate(game.date)} (${totals[p1.id]} – ${totals[p2.id]})?`)) return;
       btn.disabled = true;
       try {
         const result = await deleteGame({ repo: state.config.repo, token: getToken(), gameId: game.id });
