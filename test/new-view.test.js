@@ -43,3 +43,10 @@ test('draftComplete requires a score on every hole for both players', () => {
   d.scores.saar[1] = 4;
   assert.equal(draftComplete(d, ids, 2), true);
 });
+
+test('draftComplete is false when holes is 0 or negative, even with filled scores', () => {
+  const d = blankDraft(ids);
+  d.scores = { robbe: [1, 2], saar: [3, 4] };
+  assert.equal(draftComplete(d, ids, 0), false);
+  assert.equal(draftComplete(d, ids, -1), false);
+});

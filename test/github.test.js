@@ -37,6 +37,7 @@ function fakeGitHub(plan) {
 const okRead = (content, sha) => () => ({ ok: true, status: 200, json: () => Promise.resolve({ content: b64(content), sha }) });
 const okWrite = () => () => ({ ok: true, status: 201, json: () => Promise.resolve({}) });
 const conflict = () => () => ({ ok: false, status: 409, json: () => Promise.resolve({}) });
+const unauthorized = (status) => () => ({ ok: false, status, json: () => Promise.resolve({}) });
 
 const newGame = game('2026-06-01-boom-1', 'boom', '2026-06-01', [2], [3]);
 
@@ -96,4 +97,31 @@ test('saveGame with a new course updates courses.json first, then games.json', a
   assert.deepEqual(result.games, [newGame]);
   assert.match(gh.calls[0].url, /data\/courses\.json$/);
   assert.match(gh.calls[1].body.message, /Golf Brugge/);
+});
+
+test('saveGame skips the courses.json PUT when the course was already saved (retry after partial failure)', async () => {
+  const course = { id: 'brugge', name: 'Golf Brugge', location: 'Brugge', holes: 12 };
+  const gh = fakeGitHub([
+    okRead({ courses: [course] }, 'cs'), // course already committed on a previous attempt
+    okRead({ games: [] }, 'gs'),
+    okWrite(),
+  ]);
+  const result = await saveGame({ repo: 'o/r', token: 't', game: newGame, newCourse: course, fetchImpl: gh.fetchImpl });
+
+  assert.equal(gh.calls.length, 3, 'expected no PUT to courses.json');
+  assert.equal(gh.calls[0].url, 'https://api.github.com/repos/o/r/contents/data/courses.json');
+  assert.equal(gh.calls[0].method, 'GET');
+  assert.equal(gh.calls[1].url, 'https://api.github.com/repos/o/r/contents/data/games.json');
+  assert.equal(gh.calls[1].method, 'GET');
+  assert.equal(gh.calls[2].url, 'https://api.github.com/repos/o/r/contents/data/games.json');
+  assert.equal(gh.calls[2].method, 'PUT');
+  assert.deepEqual(result.courses, [course]);
+});
+
+test('saveGame rejects with a friendly message when the token is invalid or expired', async () => {
+  const gh = fakeGitHub([unauthorized(401)]);
+  await assert.rejects(
+    saveGame({ repo: 'o/r', token: 'bad', game: newGame, fetchImpl: gh.fetchImpl }),
+    /rejected the token/,
+  );
 });

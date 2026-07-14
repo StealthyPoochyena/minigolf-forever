@@ -40,6 +40,7 @@ export function resizeScores(draft, playerIds, holes) {
 }
 
 export function draftComplete(draft, playerIds, holes) {
+  if (!Number.isInteger(holes) || holes <= 0) return false;
   return playerIds.every((id) => {
     const s = draft.scores[id] ?? [];
     if (s.length < holes) return false;

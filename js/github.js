@@ -40,8 +40,13 @@ function headers(token) {
   };
 }
 
+function tokenRejectedError() {
+  return new Error('GitHub rejected the token (it may have expired). Tap "Forget it" and save a fresh token — see the README.');
+}
+
 async function fetchFile(repo, path, token, fetchImpl) {
   const res = await fetchImpl(apiUrl(repo, path), { headers: headers(token) });
+  if (res.status === 401 || res.status === 403) throw tokenRejectedError();
   if (!res.ok) throw new Error(`GitHub read of ${path} failed: ${res.status}`);
   const body = await res.json();
   return { content: JSON.parse(fromBase64(body.content)), sha: body.sha };
@@ -59,6 +64,7 @@ async function putFile(repo, path, content, sha, message, token, fetchImpl) {
     }),
   });
   if (res.status === 409) return { conflict: true };
+  if (res.status === 401 || res.status === 403) throw tokenRejectedError();
   if (!res.ok) throw new Error(`GitHub write of ${path} failed: ${res.status}`);
   return { conflict: false };
 }
@@ -67,6 +73,7 @@ async function saveWithRetry(repo, path, token, fetchImpl, apply, message) {
   for (let attempt = 0; attempt < 2; attempt++) {
     const { content, sha } = await fetchFile(repo, path, token, fetchImpl);
     const updated = apply(content);
+    if (updated === content) return updated; // already applied (e.g. idempotent retry) — nothing to write
     const { conflict } = await putFile(repo, path, updated, sha, message, token, fetchImpl);
     if (!conflict) return updated;
   }
@@ -78,7 +85,7 @@ export async function saveGame({ repo, token, game, newCourse = null, fetchImpl 
   if (newCourse) {
     const updated = await saveWithRetry(
       repo, 'data/courses.json', token, fetchImpl,
-      (data) => ({ courses: [...data.courses, newCourse] }),
+      (data) => (data.courses.some((c) => c.id === newCourse.id) ? data : { courses: [...data.courses, newCourse] }),
       `Add course: ${newCourse.name}`,
     );
     courses = updated.courses;
