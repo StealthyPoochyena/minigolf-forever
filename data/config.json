@@ -1,5 +1,5 @@
 {
-  "repo": "OWNER/Minigolf-forever",
+  "repo": "StealthyPoochyena/minigolf-forever",
   "maxScore": 7,
   "players": [
     { "id": "robbe", "name": "Robbe", "color": "#2f9e6e" },
