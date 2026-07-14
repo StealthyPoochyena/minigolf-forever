@@ -1,5 +1,5 @@
 import { esc } from './helpers.js';
-import { getToken, setToken, clearToken, saveGame } from '../github.js';
+import { getToken, setToken, clearToken, saveGame, replaceGame } from '../github.js';
 
 const DRAFT_KEY = 'minigolf.draft';
 
@@ -30,6 +30,21 @@ export function blankDraft(playerIds) {
     scores: Object.fromEntries(playerIds.map((id) => [id, []])),
     note: '',
   };
+}
+
+export function draftFromGame(game, playerIds) {
+  return {
+    courseId: game.courseId,
+    newCourse: { name: '', location: '', holes: 18 },
+    date: game.date,
+    scores: Object.fromEntries(playerIds.map((id) => [id, [...(game.scores[id] ?? [])]])),
+    note: game.note ?? '',
+  };
+}
+
+export function editedGameId(games, original, date, courseId) {
+  if (original.date === date && original.courseId === courseId) return original.id;
+  return buildGameId(games.filter((g) => g.id !== original.id), date, courseId);
 }
 
 export function resizeScores(draft, playerIds, holes) {
@@ -121,7 +136,7 @@ function renderForm(state, draft, ui) {
       </div>`).join('')}`;
 
   return `
-  <h2 class="page-title">Add a game</h2>
+  <h2 class="page-title">${ui.editing ? 'Edit game' : 'Add a game'}</h2>
   <section class="card">
     ${tokenSection}
     <div class="field">
@@ -144,17 +159,28 @@ function renderForm(state, draft, ui) {
     </div>
     <div class="save-row">
       <button type="button" data-action="save-game" ${ui.saving ? 'disabled' : ''}>
-        ${ui.saving ? 'Saving…' : 'Save game'}
+        ${ui.saving ? 'Saving…' : ui.editing ? 'Save changes' : 'Save game'}
       </button>
+      ${ui.editing ? `<a class="cancel-link" href="#/courses/${esc(ui.editing.courseId)}">Cancel</a>` : ''}
       ${ui.error ? `<span class="form-error">${esc(ui.error)}</span>` : ''}
     </div>
   </section>`;
 }
 
-export function mountNew(container, state, { onSaved }) {
+export function mountNew(container, state, { onSaved, editGameId = null }) {
   const playerIds = state.config.players.map((p) => p.id);
-  const draft = loadDraft(playerIds);
-  const ui = { saving: false, error: '' };
+  const editing = editGameId ? state.games.find((g) => g.id === editGameId) : null;
+  if (editGameId && !editing) {
+    container.innerHTML = '<p class="empty">Game not found. 🕳️</p>';
+    return;
+  }
+  const draft = editing ? draftFromGame(editing, playerIds) : loadDraft(playerIds);
+  const ui = { saving: false, error: '', editing };
+
+  // Edit mode never touches the add-game draft in localStorage.
+  const persist = () => {
+    if (!editing) persistDraft(draft);
+  };
 
   const rerender = () => {
     container.innerHTML = renderForm(state, draft, ui);
@@ -173,7 +199,7 @@ export function mountNew(container, state, { onSaved }) {
 
     if (btn.dataset.s) {
       draft.scores[btn.dataset.p][Number(btn.dataset.h)] = Number(btn.dataset.s);
-      persistDraft(draft);
+      persist();
       rerender();
     } else if (btn.dataset.action === 'save-token') {
       const input = container.querySelector('#token-input');
@@ -191,12 +217,12 @@ export function mountNew(container, state, { onSaved }) {
     if (e.target.id === 'course-select') {
       draft.courseId = e.target.value;
       resizeScores(draft, playerIds, selectedHoles(draft, state.courses));
-      persistDraft(draft);
+      persist();
       rerender();
     } else if (e.target.id === 'nc-holes') {
       setPath('newCourse.holes', e.target.value);
       resizeScores(draft, playerIds, selectedHoles(draft, state.courses));
-      persistDraft(draft);
+      persist();
       rerender();
     }
   };
@@ -205,7 +231,7 @@ export function mountNew(container, state, { onSaved }) {
     const path = e.target.dataset.draft;
     if (!path || e.target.id === 'nc-holes') return;
     setPath(path, e.target.value);
-    persistDraft(draft);
+    persist();
   };
 
   async function save() {
@@ -235,7 +261,9 @@ export function mountNew(container, state, { onSaved }) {
     const courseId = isNew ? newCourse.id : draft.courseId;
 
     const game = {
-      id: buildGameId(state.games, draft.date, courseId),
+      id: editing
+        ? editedGameId(state.games, editing, draft.date, courseId)
+        : buildGameId(state.games, draft.date, courseId),
       courseId,
       date: draft.date,
       scores: Object.fromEntries(playerIds.map((id) => [id, draft.scores[id].slice(0, holes)])),
@@ -245,8 +273,10 @@ export function mountNew(container, state, { onSaved }) {
     ui.saving = true;
     rerender();
     try {
-      const result = await saveGame({ repo: state.config.repo, token: getToken(), game, newCourse });
-      clearDraft();
+      const result = editing
+        ? await replaceGame({ repo: state.config.repo, token: getToken(), gameId: editing.id, game, newCourse })
+        : await saveGame({ repo: state.config.repo, token: getToken(), game, newCourse });
+      if (!editing) clearDraft();
       onSaved(result, courseId);
     } catch (err) {
       ui.saving = false;

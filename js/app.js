@@ -36,6 +36,7 @@ function render() {
     app.innerHTML = renderStats(state);
     wireStats(app, state);
   } else if (page === 'new') mountNew(app, state, { onSaved });
+  else if (page === 'edit' && param) mountNew(app, state, { onSaved, editGameId: param });
   else app.innerHTML = '<p class="empty">Page not found. 🕳️</p>';
   window.scrollTo(0, 0);
 }

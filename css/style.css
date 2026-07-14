@@ -386,3 +386,4 @@ table.records th { color: var(--ink-soft); font-weight: 500; font-size: 0.8rem; 
 .token-note { font-size: 0.85rem; color: var(--ink-soft); }
 .linklike { background: none; border: none; color: var(--felt); text-decoration: underline; padding: 0; font-weight: 500; }
 .save-row { display: flex; align-items: center; gap: 14px; margin-top: 16px; }
+.cancel-link { color: var(--ink-soft); font-weight: 500; }
