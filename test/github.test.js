@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { getToken, setToken, clearToken, saveGame } from '../js/github.js';
+import { getToken, setToken, clearToken, saveGame, replaceGame, deleteGame } from '../js/github.js';
 import { game } from './fixtures.js';
 
 function fakeStorage() {
@@ -124,4 +124,77 @@ test('saveGame rejects with a friendly message when the token is invalid or expi
     saveGame({ repo: 'o/r', token: 'bad', game: newGame, fetchImpl: gh.fetchImpl }),
     /rejected the token/,
   );
+});
+
+const existingA = game('2026-05-30-boom-1', 'boom', '2026-05-30', [1], [1]);
+const existingB = game('2026-05-31-boom-1', 'boom', '2026-05-31', [2], [3]);
+
+test('replaceGame swaps the game by id, preserving order', async () => {
+  const edited = { ...existingA, scores: { robbe: [3], saar: [2] } };
+  const gh = fakeGitHub([okRead({ games: [existingA, existingB] }, 's1'), okWrite()]);
+  const result = await replaceGame({ repo: 'o/r', token: 't', gameId: existingA.id, game: edited, fetchImpl: gh.fetchImpl });
+  assert.deepEqual(result.games, [edited, existingB]);
+  assert.equal(result.courses, null);
+  const put = gh.calls[1];
+  assert.equal(put.method, 'PUT');
+  assert.match(put.body.message, /^Edit game: 2026-05-30-boom-1$/);
+  const written = JSON.parse(Buffer.from(put.body.content, 'base64').toString());
+  assert.deepEqual(written.games, [edited, existingB]);
+});
+
+test('replaceGame can change the game id in place', async () => {
+  const moved = { ...existingA, id: '2026-06-02-gent-1', courseId: 'gent', date: '2026-06-02' };
+  const gh = fakeGitHub([okRead({ games: [existingA, existingB] }, 's1'), okWrite()]);
+  const result = await replaceGame({ repo: 'o/r', token: 't', gameId: existingA.id, game: moved, fetchImpl: gh.fetchImpl });
+  assert.deepEqual(result.games, [moved, existingB]);
+});
+
+test('replaceGame rejects when the game vanished', async () => {
+  const gh = fakeGitHub([okRead({ games: [existingB] }, 's1')]);
+  await assert.rejects(
+    replaceGame({ repo: 'o/r', token: 't', gameId: 'gone', game: existingA, fetchImpl: gh.fetchImpl }),
+    /no longer exists/,
+  );
+  assert.equal(gh.calls.length, 1);
+});
+
+test('replaceGame retries once on conflict', async () => {
+  const edited = { ...existingA, note: 'fixed' };
+  const gh = fakeGitHub([
+    okRead({ games: [existingA] }, 'stale'),
+    conflict(),
+    okRead({ games: [existingA, existingB] }, 'fresh'),
+    okWrite(),
+  ]);
+  const result = await replaceGame({ repo: 'o/r', token: 't', gameId: existingA.id, game: edited, fetchImpl: gh.fetchImpl });
+  assert.deepEqual(result.games, [edited, existingB]);
+});
+
+test('replaceGame with a new course updates courses.json first', async () => {
+  const course = { id: 'brugge', name: 'Golf Brugge', location: 'Brugge', holes: 12 };
+  const moved = { ...existingA, id: '2026-05-30-brugge-1', courseId: 'brugge' };
+  const gh = fakeGitHub([
+    okRead({ courses: [] }, 'cs'),
+    okWrite(),
+    okRead({ games: [existingA] }, 'gs'),
+    okWrite(),
+  ]);
+  const result = await replaceGame({ repo: 'o/r', token: 't', gameId: existingA.id, game: moved, newCourse: course, fetchImpl: gh.fetchImpl });
+  assert.deepEqual(result.courses, [course]);
+  assert.deepEqual(result.games, [moved]);
+  assert.match(gh.calls[0].url, /data\/courses\.json$/);
+});
+
+test('deleteGame removes the game and commits', async () => {
+  const gh = fakeGitHub([okRead({ games: [existingA, existingB] }, 's1'), okWrite()]);
+  const result = await deleteGame({ repo: 'o/r', token: 't', gameId: existingA.id, fetchImpl: gh.fetchImpl });
+  assert.deepEqual(result.games, [existingB]);
+  assert.match(gh.calls[1].body.message, /^Delete game: 2026-05-30-boom-1$/);
+});
+
+test('deleteGame of an already-deleted game succeeds without a PUT', async () => {
+  const gh = fakeGitHub([okRead({ games: [existingB] }, 's1')]);
+  const result = await deleteGame({ repo: 'o/r', token: 't', gameId: 'gone', fetchImpl: gh.fetchImpl });
+  assert.deepEqual(result.games, [existingB]);
+  assert.equal(gh.calls.length, 1);
 });

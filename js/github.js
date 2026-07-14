@@ -80,20 +80,50 @@ async function saveWithRetry(repo, path, token, fetchImpl, apply, message) {
   throw new Error('Save conflict: someone else just saved. Reload and try again.');
 }
 
+async function addCourseIfMissing(repo, token, newCourse, fetchImpl) {
+  const updated = await saveWithRetry(
+    repo, 'data/courses.json', token, fetchImpl,
+    (data) => (data.courses.some((c) => c.id === newCourse.id) ? data : { courses: [...data.courses, newCourse] }),
+    `Add course: ${newCourse.name}`,
+  );
+  return updated.courses;
+}
+
 export async function saveGame({ repo, token, game, newCourse = null, fetchImpl = fetch }) {
-  let courses = null;
-  if (newCourse) {
-    const updated = await saveWithRetry(
-      repo, 'data/courses.json', token, fetchImpl,
-      (data) => (data.courses.some((c) => c.id === newCourse.id) ? data : { courses: [...data.courses, newCourse] }),
-      `Add course: ${newCourse.name}`,
-    );
-    courses = updated.courses;
-  }
+  const courses = newCourse ? await addCourseIfMissing(repo, token, newCourse, fetchImpl) : null;
   const updated = await saveWithRetry(
     repo, 'data/games.json', token, fetchImpl,
     (data) => ({ games: [...data.games, game] }),
     `Add game: ${game.id}`,
   );
   return { games: updated.games, courses };
+}
+
+export async function replaceGame({ repo, token, gameId, game, newCourse = null, fetchImpl = fetch }) {
+  const courses = newCourse ? await addCourseIfMissing(repo, token, newCourse, fetchImpl) : null;
+  const updated = await saveWithRetry(
+    repo, 'data/games.json', token, fetchImpl,
+    (data) => {
+      const index = data.games.findIndex((g) => g.id === gameId);
+      if (index === -1) {
+        throw new Error('That game no longer exists — someone may have deleted it. Reload and try again.');
+      }
+      const games = [...data.games];
+      games[index] = game;
+      return { games };
+    },
+    `Edit game: ${gameId}`,
+  );
+  return { games: updated.games, courses };
+}
+
+export async function deleteGame({ repo, token, gameId, fetchImpl = fetch }) {
+  const updated = await saveWithRetry(
+    repo, 'data/games.json', token, fetchImpl,
+    (data) => (data.games.some((g) => g.id === gameId)
+      ? { games: data.games.filter((g) => g.id !== gameId) }
+      : data),
+    `Delete game: ${gameId}`,
+  );
+  return { games: updated.games };
 }
