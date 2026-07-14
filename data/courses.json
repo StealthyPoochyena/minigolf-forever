@@ -5,6 +5,12 @@
       "name": "Minigolf Hernieuwenburg",
       "location": "Wielsbeke",
       "holes": 18
+    },
+    {
+      "id": "golden-point",
+      "name": "Golden Point",
+      "location": "Middelkerke",
+      "holes": 18
     }
   ]
 }
