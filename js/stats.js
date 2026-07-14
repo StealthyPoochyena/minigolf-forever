@@ -98,3 +98,63 @@ export function biggestMargin(games) {
   }
   return best;
 }
+
+export function averagePerHole(games, playerId) {
+  let strokes = 0;
+  let holes = 0;
+  for (const game of games) {
+    const scores = game.scores[playerId];
+    if (!scores) continue;
+    strokes += scores.reduce((a, b) => a + b, 0);
+    holes += scores.length;
+  }
+  return holes === 0 ? null : strokes / holes;
+}
+
+export function averagePerGame(games, playerId) {
+  const totals = games
+    .filter((g) => g.scores[playerId])
+    .map((g) => g.scores[playerId].reduce((a, b) => a + b, 0));
+  if (totals.length === 0) return null;
+  return totals.reduce((a, b) => a + b, 0) / totals.length;
+}
+
+export function timeline(games, playerIds) {
+  return sortByDateDesc(games)
+    .reverse()
+    .map((game) => {
+      const avgPerHole = {};
+      for (const p of playerIds) {
+        const scores = game.scores[p];
+        avgPerHole[p] = scores
+          ? scores.reduce((a, b) => a + b, 0) / scores.length
+          : null;
+      }
+      return { id: game.id, date: game.date, avgPerHole };
+    });
+}
+
+export function timesPlayed(games, courseId) {
+  return games.filter((g) => g.courseId === courseId).length;
+}
+
+export function courseTally(games, courseId, playerIds) {
+  return overallTally(games.filter((g) => g.courseId === courseId), playerIds);
+}
+
+export function courseLeader(games, courseId, playerIds) {
+  const { wins } = courseTally(games, courseId, playerIds);
+  const [a, b] = playerIds;
+  if (wins[a] === wins[b]) return 'tie';
+  return wins[a] > wins[b] ? a : b;
+}
+
+export function courseBest(games, courseId, playerId) {
+  return bestGame(games.filter((g) => g.courseId === courseId), playerId);
+}
+
+export function holeWinner(game, holeIndex) {
+  const [[aId, aScores], [bId, bScores]] = Object.entries(game.scores);
+  if (aScores[holeIndex] === bScores[holeIndex]) return 'tie';
+  return aScores[holeIndex] < bScores[holeIndex] ? aId : bId;
+}
