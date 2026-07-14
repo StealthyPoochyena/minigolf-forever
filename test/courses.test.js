@@ -44,3 +44,9 @@ test('game header crowns the winner and marks ties', () => {
 test('unknown course shows a friendly message', () => {
   assert.match(renderCourse(state, 'nope'), /Course not found/);
 });
+
+test('course page offers edit and delete per game', () => {
+  const html = renderCourse(state, 'boom');
+  assert.match(html, /href="#\/edit\/2026-02-01-boom-1"/);
+  assert.match(html, /data-action="delete-game" data-game-id="2026-01-10-boom-1"/);
+});

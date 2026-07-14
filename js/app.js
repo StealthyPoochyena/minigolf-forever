@@ -1,7 +1,7 @@
 import { loadAll } from './data.js';
 import { renderHome } from './views/home.js';
 import { renderCourses } from './views/courses.js';
-import { renderCourse } from './views/course.js';
+import { renderCourse, wireCourse } from './views/course.js';
 import { renderStats, wireStats } from './views/stats.js';
 import { mountNew } from './views/new.js';
 
@@ -25,13 +25,21 @@ function onSaved({ games, courses }, courseId) {
   location.hash = `#/courses/${courseId}`;
 }
 
+function onDeleted({ games }) {
+  state.games = games;
+  render();
+}
+
 function render() {
   if (!state) return;
+  app.onclick = app.onchange = app.oninput = null; // clear stale mountNew handlers
   const { page, param } = currentRoute();
   markActiveNav(page);
   if (page === 'home') app.innerHTML = renderHome(state);
-  else if (page === 'courses' && param) app.innerHTML = renderCourse(state, param);
-  else if (page === 'courses') app.innerHTML = renderCourses(state);
+  else if (page === 'courses' && param) {
+    app.innerHTML = renderCourse(state, param);
+    wireCourse(app, state, { onDeleted });
+  } else if (page === 'courses') app.innerHTML = renderCourses(state);
   else if (page === 'stats') {
     app.innerHTML = renderStats(state);
     wireStats(app, state);

@@ -1,5 +1,6 @@
 import { sortByDateDesc, gameTotals, gameWinner, holeWinner } from '../stats.js';
 import { esc, CROWN, fmtDate } from './helpers.js';
+import { getToken, deleteGame } from '../github.js';
 
 function scorecard(game, config) {
   const [p1, p2] = config.players;
@@ -49,6 +50,10 @@ export function renderCourse(state, courseId) {
         </summary>
         ${scorecard(g, config)}
         ${g.note ? `<p class="note">${esc(g.note)}</p>` : ''}
+        <div class="game-actions">
+          <a href="#/edit/${esc(g.id)}">✏️ Edit</a>
+          <button type="button" class="linklike danger" data-action="delete-game" data-game-id="${esc(g.id)}">🗑️ Delete</button>
+        </div>
       </details>`;
     })
     .join('');
@@ -56,4 +61,28 @@ export function renderCourse(state, courseId) {
   return `<h2 class="page-title">${esc(course.name)}</h2>
     <p class="page-sub">${esc(course.location)} · ${course.holes} holes · ${list.length} game${list.length === 1 ? '' : 's'}</p>
     ${items || '<p class="empty">No games here yet.</p>'}`;
+}
+
+export function wireCourse(root, state, { onDeleted }) {
+  root.querySelectorAll('[data-action="delete-game"]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const game = state.games.find((g) => g.id === btn.dataset.gameId);
+      if (!game) return;
+      const [p1, p2] = state.config.players;
+      const totals = gameTotals(game);
+      if (!confirm(`Delete the game of ${fmtDate(game.date)} (${totals[p1.id]} – ${totals[p2.id]})?`)) return;
+      if (!getToken()) {
+        alert('Deleting needs the GitHub token — open the Add page once to set it.');
+        return;
+      }
+      btn.disabled = true;
+      try {
+        const result = await deleteGame({ repo: state.config.repo, token: getToken(), gameId: game.id });
+        onDeleted(result);
+      } catch (err) {
+        btn.disabled = false;
+        alert(err.message);
+      }
+    });
+  });
 }
