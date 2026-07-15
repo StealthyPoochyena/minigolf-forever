@@ -50,3 +50,19 @@ test('course page offers edit and delete per game', () => {
   assert.match(html, /href="#\/edit\/2026-02-01-boom-1"/);
   assert.match(html, /data-action="delete-game" data-game-id="2026-01-10-boom-1"/);
 });
+
+test('course page offers course edit and delete actions', () => {
+  const html = renderCourse(state, 'boom');
+  assert.match(html, /data-action="edit-course"/);
+  assert.match(html, /data-action="delete-course"/);
+});
+
+test('course edit form is hidden and pre-filled with name and location', () => {
+  const html = renderCourse(state, 'boom');
+  assert.match(html, /<div class="card course-edit" hidden data-course-edit>/);
+  assert.match(html, /id="ce-name" value="Golf Boom"/);
+  assert.match(html, /id="ce-loc" value="Boom"/);
+  assert.match(html, /3 holes — hole count can’t be changed/);
+  assert.match(html, /data-action="save-course"/);
+  assert.match(html, /data-action="cancel-edit-course"/);
+});

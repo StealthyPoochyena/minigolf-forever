@@ -60,6 +60,22 @@ export function renderCourse(state, courseId) {
 
   return `<h2 class="page-title">${esc(course.name)}</h2>
     <p class="page-sub">${esc(course.location)} · ${course.holes} holes · ${list.length} game${list.length === 1 ? '' : 's'}</p>
+    <div class="course-actions">
+      <button type="button" class="linklike" data-action="edit-course">✏️ Edit course</button>
+      <button type="button" class="linklike danger" data-action="delete-course">🗑️ Delete course</button>
+    </div>
+    <div class="card course-edit" hidden data-course-edit>
+      <div class="field"><label for="ce-name">Course name</label>
+        <input id="ce-name" value="${esc(course.name)}" /></div>
+      <div class="field"><label for="ce-loc">Location</label>
+        <input id="ce-loc" value="${esc(course.location)}" /></div>
+      <p class="token-note">${course.holes} holes — hole count can’t be changed.</p>
+      <div class="save-row">
+        <button type="button" data-action="save-course">Save</button>
+        <button type="button" class="linklike cancel-link" data-action="cancel-edit-course">Cancel</button>
+        <span class="form-error" hidden></span>
+      </div>
+    </div>
     ${items || '<p class="empty">No games here yet.</p>'}`;
 }
 
