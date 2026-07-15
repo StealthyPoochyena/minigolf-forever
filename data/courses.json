@@ -29,6 +29,12 @@
       "name": "Golf Westhoek",
       "location": "Westhoek",
       "holes": 18
+    },
+    {
+      "id": "atlantico",
+      "name": "Atlantico",
+      "location": "Playa de Ingles",
+      "holes": 17
     }
   ]
 }
