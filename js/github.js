@@ -74,7 +74,8 @@ async function saveWithRetry(repo, path, token, fetchImpl, apply, message) {
     const { content, sha } = await fetchFile(repo, path, token, fetchImpl);
     const updated = apply(content);
     if (updated === content) return updated; // already applied (e.g. idempotent retry) — nothing to write
-    const { conflict } = await putFile(repo, path, updated, sha, message, token, fetchImpl);
+    const msg = typeof message === 'function' ? message(content) : message;
+    const { conflict } = await putFile(repo, path, updated, sha, msg, token, fetchImpl);
     if (!conflict) return updated;
   }
   throw new Error('Save conflict: someone else just saved. Reload and try again.');
@@ -118,6 +119,28 @@ export async function replaceGame({ repo, token, gameId, game, newCourse = null,
     `Edit game: ${gameId}`,
   );
   return { games: updated.games, courses };
+}
+
+export async function updateCourse({ repo, token, courseId, name, location, fetchImpl = fetch }) {
+  const updated = await saveWithRetry(
+    repo, 'data/courses.json', token, fetchImpl,
+    (data) => {
+      const index = data.courses.findIndex((c) => c.id === courseId);
+      if (index === -1) {
+        throw new Error('That course no longer exists — someone may have deleted it. Reload and try again.');
+      }
+      const current = data.courses[index];
+      if (current.name === name && current.location === location) return data;
+      const courses = [...data.courses];
+      courses[index] = { ...current, name, location };
+      return { courses };
+    },
+    (data) => {
+      const old = data.courses.find((c) => c.id === courseId);
+      return old.name !== name ? `Rename course: ${old.name} → ${name}` : `Edit course: ${name}`;
+    },
+  );
+  return { courses: updated.courses };
 }
 
 export async function deleteGame({ repo, token, gameId, fetchImpl = fetch }) {

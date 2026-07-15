@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { getToken, setToken, clearToken, saveGame, replaceGame, deleteGame } from '../js/github.js';
+import { getToken, setToken, clearToken, saveGame, replaceGame, deleteGame, updateCourse } from '../js/github.js';
 import { game } from './fixtures.js';
 
 function fakeStorage() {
@@ -207,4 +207,62 @@ test('deleteGame of an already-deleted game succeeds without a PUT', async () =>
   const result = await deleteGame({ repo: 'o/r', token: 't', gameId: 'gone', fetchImpl: gh.fetchImpl });
   assert.deepEqual(result.games, [existingB]);
   assert.equal(gh.calls.length, 1);
+});
+
+const boomCourse = { id: 'boom', name: 'Golf Boom', location: 'Boom', holes: 3 };
+const gentCourse = { id: 'gent', name: 'Putt Gent', location: 'Gent', holes: 2 };
+
+test('updateCourse rewrites name and location, keeping id and holes', async () => {
+  const gh = fakeGitHub([okRead({ courses: [boomCourse, gentCourse] }, 'cs'), okWrite()]);
+  const result = await updateCourse({
+    repo: 'o/r', token: 't', courseId: 'boom', name: 'Mega Golf Boom', location: 'Boom-Centrum', fetchImpl: gh.fetchImpl,
+  });
+  assert.deepEqual(result.courses, [
+    { id: 'boom', name: 'Mega Golf Boom', location: 'Boom-Centrum', holes: 3 },
+    gentCourse,
+  ]);
+  const put = gh.calls[1];
+  assert.equal(put.method, 'PUT');
+  assert.equal(put.url, 'https://api.github.com/repos/o/r/contents/data/courses.json');
+  assert.equal(put.body.message, 'Rename course: Golf Boom → Mega Golf Boom');
+});
+
+test('updateCourse with unchanged name commits as an edit, not a rename', async () => {
+  const gh = fakeGitHub([okRead({ courses: [boomCourse] }, 'cs'), okWrite()]);
+  await updateCourse({
+    repo: 'o/r', token: 't', courseId: 'boom', name: 'Golf Boom', location: 'Boom-Zuid', fetchImpl: gh.fetchImpl,
+  });
+  assert.equal(gh.calls[1].body.message, 'Edit course: Golf Boom');
+});
+
+test('updateCourse with nothing changed makes no PUT', async () => {
+  const gh = fakeGitHub([okRead({ courses: [boomCourse] }, 'cs')]);
+  const result = await updateCourse({
+    repo: 'o/r', token: 't', courseId: 'boom', name: 'Golf Boom', location: 'Boom', fetchImpl: gh.fetchImpl,
+  });
+  assert.deepEqual(result.courses, [boomCourse]);
+  assert.equal(gh.calls.length, 1);
+});
+
+test('updateCourse rejects when the course vanished', async () => {
+  const gh = fakeGitHub([okRead({ courses: [gentCourse] }, 'cs')]);
+  await assert.rejects(
+    updateCourse({ repo: 'o/r', token: 't', courseId: 'boom', name: 'X', location: 'Y', fetchImpl: gh.fetchImpl }),
+    /no longer exists/,
+  );
+  assert.equal(gh.calls.length, 1, 'expected no PUT');
+});
+
+test('updateCourse retries once on conflict', async () => {
+  const gh = fakeGitHub([
+    okRead({ courses: [boomCourse] }, 'stale'),
+    conflict(),
+    okRead({ courses: [boomCourse, gentCourse] }, 'fresh'),
+    okWrite(),
+  ]);
+  const result = await updateCourse({
+    repo: 'o/r', token: 't', courseId: 'boom', name: 'New Boom', location: 'Boom', fetchImpl: gh.fetchImpl,
+  });
+  assert.equal(result.courses[0].name, 'New Boom');
+  assert.equal(result.courses.length, 2);
 });
