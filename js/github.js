@@ -153,3 +153,19 @@ export async function deleteGame({ repo, token, gameId, fetchImpl = fetch }) {
   );
   return { games: updated.games };
 }
+
+export async function deleteCourse({ repo, token, courseId, fetchImpl = fetch }) {
+  // Backstop against stale client state: check the server's games, not the UI's.
+  const { content: gamesFile } = await fetchFile(repo, 'data/games.json', token, fetchImpl);
+  if (gamesFile.games.some((g) => g.courseId === courseId)) {
+    throw new Error('This course still has games — delete those first.');
+  }
+  const updated = await saveWithRetry(
+    repo, 'data/courses.json', token, fetchImpl,
+    (data) => (data.courses.some((c) => c.id === courseId)
+      ? { courses: data.courses.filter((c) => c.id !== courseId) }
+      : data),
+    (data) => `Delete course: ${data.courses.find((c) => c.id === courseId).name}`,
+  );
+  return { courses: updated.courses };
+}

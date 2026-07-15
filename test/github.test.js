@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { getToken, setToken, clearToken, saveGame, replaceGame, deleteGame, updateCourse } from '../js/github.js';
+import { getToken, setToken, clearToken, saveGame, replaceGame, deleteGame, updateCourse, deleteCourse } from '../js/github.js';
 import { game } from './fixtures.js';
 
 function fakeStorage() {
@@ -251,6 +251,53 @@ test('updateCourse rejects when the course vanished', async () => {
     /no longer exists/,
   );
   assert.equal(gh.calls.length, 1, 'expected no PUT');
+});
+
+test('deleteCourse checks games first, then removes the course', async () => {
+  const gh = fakeGitHub([
+    okRead({ games: [game('2026-01-10-gent-1', 'gent', '2026-01-10', [1], [2])] }, 'gs'),
+    okRead({ courses: [boomCourse, gentCourse] }, 'cs'),
+    okWrite(),
+  ]);
+  const result = await deleteCourse({ repo: 'o/r', token: 't', courseId: 'boom', fetchImpl: gh.fetchImpl });
+  assert.deepEqual(result.courses, [gentCourse]);
+  assert.match(gh.calls[0].url, /data\/games\.json$/);
+  const put = gh.calls[2];
+  assert.equal(put.url, 'https://api.github.com/repos/o/r/contents/data/courses.json');
+  assert.equal(put.body.message, 'Delete course: Golf Boom');
+});
+
+test('deleteCourse refuses while games still reference the course', async () => {
+  const gh = fakeGitHub([
+    okRead({ games: [game('2026-01-10-boom-1', 'boom', '2026-01-10', [1], [2])] }, 'gs'),
+  ]);
+  await assert.rejects(
+    deleteCourse({ repo: 'o/r', token: 't', courseId: 'boom', fetchImpl: gh.fetchImpl }),
+    /still has games/,
+  );
+  assert.equal(gh.calls.length, 1, 'expected no touch of courses.json');
+});
+
+test('deleteCourse of an already-deleted course succeeds without a PUT', async () => {
+  const gh = fakeGitHub([
+    okRead({ games: [] }, 'gs'),
+    okRead({ courses: [gentCourse] }, 'cs'),
+  ]);
+  const result = await deleteCourse({ repo: 'o/r', token: 't', courseId: 'boom', fetchImpl: gh.fetchImpl });
+  assert.deepEqual(result.courses, [gentCourse]);
+  assert.equal(gh.calls.length, 2);
+});
+
+test('deleteCourse retries once on conflict', async () => {
+  const gh = fakeGitHub([
+    okRead({ games: [] }, 'gs'),
+    okRead({ courses: [boomCourse, gentCourse] }, 'stale'),
+    conflict(),
+    okRead({ courses: [boomCourse, gentCourse] }, 'fresh'),
+    okWrite(),
+  ]);
+  const result = await deleteCourse({ repo: 'o/r', token: 't', courseId: 'boom', fetchImpl: gh.fetchImpl });
+  assert.deepEqual(result.courses, [gentCourse]);
 });
 
 test('updateCourse retries once on conflict', async () => {
