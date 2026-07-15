@@ -23,6 +23,12 @@
       "name": "Minigolf San Agustin",
       "location": "San Agustin",
       "holes": 18
+    },
+    {
+      "id": "golf-westhoek",
+      "name": "Golf Westhoek",
+      "location": "Westhoek",
+      "holes": 18
     }
   ]
 }
