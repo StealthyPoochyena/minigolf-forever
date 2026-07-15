@@ -11,6 +11,12 @@
       "name": "Golden Point",
       "location": "Middelkerke",
       "holes": 18
+    },
+    {
+      "id": "minigolf-tip-top",
+      "name": "Minigolf Tip-top",
+      "location": "Oostduinkerke",
+      "holes": 18
     }
   ]
 }
