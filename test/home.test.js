@@ -38,3 +38,17 @@ test('recent games list links to the course page', () => {
   assert.match(html, /href="#\/courses\/gent"/);
   assert.match(html, /Putt Gent/);
 });
+
+test('games beyond the first three sit behind a show-all expander', () => {
+  const html = renderHome(state);
+  assert.match(html, /<details class="all-games">/);
+  assert.match(html, /Show all 4 games/);
+  const [, details] = html.split('<details class="all-games">');
+  assert.match(details, /2026-01-10|10 Jan|Jan 10/i); // oldest game lives inside the expander
+  assert.equal(html.match(/<li>/g).length, 4); // every game is rendered somewhere
+});
+
+test('no expander when there are three games or fewer', () => {
+  const html = renderHome({ config, courses, games: games.slice(0, 3) });
+  assert.ok(!html.includes('all-games'));
+});

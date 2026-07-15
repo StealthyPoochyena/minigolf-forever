@@ -29,16 +29,26 @@ export function renderHome(state) {
     }
   }
 
-  const recent = sortByDateDesc(games).slice(0, 3).map((g) => {
-      const totals = gameTotals(g);
-      const w = gameWinner(g);
-      const chipCls = w === 'tie' ? '' : w === p1.id ? ' p1' : ' p2';
-      return `<li><a href="#/courses/${esc(g.courseId)}">
-        <span class="recent-course">${esc(courseName(courses, g.courseId))}</span>
-        <span class="recent-date">${fmtDate(g.date)}</span>
-        <span class="chip${chipCls}">${totals[p1.id]} – ${totals[p2.id]} ${w === 'tie' ? '🤝' : '👑'}</span>
-      </a></li>`;
-    }).join('');
+  const gameRow = (g) => {
+    const totals = gameTotals(g);
+    const w = gameWinner(g);
+    const chipCls = w === 'tie' ? '' : w === p1.id ? ' p1' : ' p2';
+    return `<li><a href="#/courses/${esc(g.courseId)}">
+      <span class="recent-course">${esc(courseName(courses, g.courseId))}</span>
+      <span class="recent-date">${fmtDate(g.date)}</span>
+      <span class="chip${chipCls}">${totals[p1.id]} – ${totals[p2.id]} ${w === 'tie' ? '🤝' : '👑'}</span>
+    </a></li>`;
+  };
+
+  const sorted = sortByDateDesc(games);
+  const recent = sorted.slice(0, 3).map(gameRow).join('');
+  const older = sorted.slice(3).map(gameRow).join('');
+  const allGames = older
+    ? `<details class="all-games">
+        <summary>Show all ${games.length} games</summary>
+        <ul class="recent">${older}</ul>
+      </details>`
+    : '';
 
   return `
   <section class="hero card">
@@ -51,6 +61,6 @@ export function renderHome(state) {
   </section>
   <section class="card">
     <h3>Recent games</h3>
-    ${games.length ? `<ul class="recent">${recent}</ul>` : '<p class="muted">Nothing here yet.</p>'}
+    ${games.length ? `<ul class="recent">${recent}</ul>${allGames}` : '<p class="muted">Nothing here yet.</p>'}
   </section>`;
 }
