@@ -17,6 +17,12 @@
       "name": "Minigolf Tip-top",
       "location": "Oostduinkerke",
       "holes": 18
+    },
+    {
+      "id": "minigolf-san-agustin",
+      "name": "Minigolf San Agustin",
+      "location": "San Agustin",
+      "holes": 18
     }
   ]
 }
