@@ -41,6 +41,12 @@
       "name": "Minigolf Floréal",
       "location": "Nieuwpoort",
       "holes": 18
+    },
+    {
+      "id": "minigolf-petit-bois",
+      "name": "Minigolf Petit-Bois",
+      "location": "Koksijde",
+      "holes": 18
     }
   ]
 }
