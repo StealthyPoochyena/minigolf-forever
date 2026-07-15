@@ -35,6 +35,12 @@
       "name": "Atlantico",
       "location": "Playa de Ingles",
       "holes": 17
+    },
+    {
+      "id": "minigolf-flor-al",
+      "name": "Minigolf Floréal",
+      "location": "Nieuwpoort",
+      "holes": 18
     }
   ]
 }
