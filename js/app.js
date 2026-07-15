@@ -30,6 +30,16 @@ function onDeleted({ games }) {
   render();
 }
 
+function onCourseSaved({ courses }) {
+  state.courses = courses;
+  render();
+}
+
+function onCourseDeleted({ courses }) {
+  state.courses = courses;
+  location.hash = '#/courses';
+}
+
 function render() {
   if (!state) return;
   app.onclick = app.onchange = app.oninput = null; // clear stale mountNew handlers
@@ -38,7 +48,7 @@ function render() {
   if (page === 'home') app.innerHTML = renderHome(state);
   else if (page === 'courses' && param) {
     app.innerHTML = renderCourse(state, param);
-    wireCourse(app, state, { onDeleted });
+    wireCourse(app, state, { onDeleted, onCourseSaved, onCourseDeleted });
   } else if (page === 'courses') app.innerHTML = renderCourses(state);
   else if (page === 'stats') {
     app.innerHTML = renderStats(state);

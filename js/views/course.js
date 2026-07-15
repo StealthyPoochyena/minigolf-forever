@@ -1,6 +1,6 @@
 import { sortByDateDesc, gameTotals, gameWinner, holeWinner } from '../stats.js';
 import { esc, CROWN, fmtDate } from './helpers.js';
-import { getToken, deleteGame } from '../github.js';
+import { getToken, deleteGame, updateCourse, deleteCourse } from '../github.js';
 
 function scorecard(game, config) {
   const [p1, p2] = config.players;
@@ -79,7 +79,70 @@ export function renderCourse(state, courseId) {
     ${items || '<p class="empty">No games here yet.</p>'}`;
 }
 
-export function wireCourse(root, state, { onDeleted }) {
+export function wireCourse(root, state, { onDeleted, onCourseSaved, onCourseDeleted }) {
+  const courseId = location.hash.replace(/^#\/?/, '').split('/')[1];
+  const course = state.courses.find((c) => c.id === courseId);
+  const editPanel = root.querySelector('[data-course-edit]');
+  const needToken = () => {
+    if (getToken()) return false;
+    alert('This needs the GitHub token — open the Add page once to set it.');
+    return true;
+  };
+
+  root.querySelector('[data-action="edit-course"]')?.addEventListener('click', () => {
+    if (needToken()) return;
+    editPanel.hidden = !editPanel.hidden;
+  });
+
+  root.querySelector('[data-action="cancel-edit-course"]')?.addEventListener('click', () => {
+    editPanel.hidden = true;
+    editPanel.querySelector('#ce-name').value = course.name;
+    editPanel.querySelector('#ce-loc').value = course.location;
+  });
+
+  root.querySelector('[data-action="save-course"]')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    const error = editPanel.querySelector('.form-error');
+    const name = editPanel.querySelector('#ce-name').value.trim();
+    const loc = editPanel.querySelector('#ce-loc').value.trim();
+    if (!name || !loc) {
+      error.textContent = 'Name and location are both needed.';
+      error.hidden = false;
+      return;
+    }
+    error.hidden = true;
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    try {
+      const result = await updateCourse({ repo: state.config.repo, token: getToken(), courseId: course.id, name, location: loc });
+      onCourseSaved(result);
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'Save';
+      error.textContent = err.message;
+      error.hidden = false;
+    }
+  });
+
+  root.querySelector('[data-action="delete-course"]')?.addEventListener('click', async (e) => {
+    if (needToken()) return;
+    const n = state.games.filter((g) => g.courseId === course.id).length;
+    if (n > 0) {
+      alert(`This course has ${n} game${n === 1 ? '' : 's'} — delete those first.`);
+      return;
+    }
+    if (!confirm(`Delete the course "${course.name}"?`)) return;
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    try {
+      const result = await deleteCourse({ repo: state.config.repo, token: getToken(), courseId: course.id });
+      onCourseDeleted(result);
+    } catch (err) {
+      btn.disabled = false;
+      alert(err.message);
+    }
+  });
+
   root.querySelectorAll('[data-action="delete-game"]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const game = state.games.find((g) => g.id === btn.dataset.gameId);
