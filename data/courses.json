@@ -41,6 +41,12 @@
       "name": "Minigolf Petit-Bois",
       "location": "Koksijde",
       "holes": 18
+    },
+    {
+      "id": "de-kegel-x-treme",
+      "name": "De Kegel X-treme",
+      "location": "Middelkerke",
+      "holes": 18
     }
   ]
 }
