@@ -47,6 +47,12 @@
       "name": "De Kegel X-treme",
       "location": "Middelkerke",
       "holes": 18
+    },
+    {
+      "id": "panne-baaltje",
+      "name": "Panne Baaltje",
+      "location": "De Panne",
+      "holes": 18
     }
   ]
 }
