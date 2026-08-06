@@ -53,6 +53,12 @@
       "name": "Panne Baaltje",
       "location": "De Panne",
       "holes": 18
+    },
+    {
+      "id": "minigolf-bredene",
+      "name": "Minigolf Bredene",
+      "location": "Bredene",
+      "holes": 21
     }
   ]
 }
