@@ -59,6 +59,12 @@
       "name": "Minigolf Bredene",
       "location": "Bredene",
       "holes": 21
+    },
+    {
+      "id": "sunparks-oostduinkerke",
+      "name": "Sunparks Oostduinkerke",
+      "location": "Oostduinkerke",
+      "holes": 18
     }
   ]
 }
